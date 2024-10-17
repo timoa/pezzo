@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pezzo.fullname" . }}-server
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pezzo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "pezzo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-server
+          image: "{{ .Values.image.repository }}/server:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.pezzo.server.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: postgres-password
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: clickhouse-user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: clickhouse-password
+            {{- if not .Values.postgres.enabled }}
+            - name: POSTGRES_HOST
+              value: {{ .Values.externalServices.postgres.host | quote }}
+            - name: POSTGRES_PORT
+              value: {{ .Values.externalServices.postgres.port | quote }}
+            {{- end }}
+            {{- if not .Values.redis.enabled }}
+            - name: REDIS_HOST
+              value: {{ .Values.externalServices.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.externalServices.redis.port | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

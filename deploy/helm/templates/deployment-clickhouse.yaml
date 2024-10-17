@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pezzo.fullname" . }}-clickhouse
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pezzo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: clickhouse
+  template:
+    metadata:
+      labels:
+        {{- include "pezzo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:23-alpine
+          ports:
+            - name: http
+              containerPort: 8123
+            - name: native
+              containerPort: 9000
+            - name: mysql
+              containerPort: 9004
+          env:
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: clickhouse-user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: clickhouse-password
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+            - name: clickhouse-logs
+              mountPath: /var/log/clickhouse-server
+            - name: config-users
+              mountPath: /etc/clickhouse-server/users.d/config.xml
+              subPath: config.xml
+            - name: config-config
+              mountPath: /etc/clickhouse-server/config.d/config.xml
+              subPath: config.xml
+      volumes:
+        - name: clickhouse-data
+          {{- if .Values.clickhouse.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "pezzo.fullname" . }}-clickhouse
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: clickhouse-logs
+          emptyDir: {}
+        - name: config-users
+          configMap:
+            name: {{ include "pezzo.fullname" . }}-clickhouse-config
+        - name: config-config
+          configMap:
+            name: {{ include "pezzo.fullname" . }}-clickhouse-config

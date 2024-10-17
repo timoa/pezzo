@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pezzo.fullname" . }}-local-kms
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: local-kms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pezzo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: local-kms
+  template:
+    metadata:
+      labels:
+        {{- include "pezzo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: local-kms
+    spec:
+      containers:
+        - name: local-kms
+          image: nsmithuk/local-kms:latest
+          ports:
+            - name: http
+              containerPort: 9981
+          env:
+            {{- range $key, $value := .Values.localKms.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              BACKING_KEYS=$(cat /secrets/local-kms-backing-keys | jq -r '.[0]')
+              echo "Keys:
+                Symmetric:
+                  Aes:
+                    - Metadata:
+                        KeyId: demo-master-key
+                      BackingKeys:
+                        - $BACKING_KEYS
+
+              Aliases:
+                - AliasName: alias/testing
+                  TargetKeyId: demo-master-key" > /init/seed.yaml && local-kms
+          volumeMounts:
+            - name: local-kms-secrets
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: local-kms-secrets
+          secret:
+            secretName: {{ include "pezzo.fullname" . }}-secrets
+            items:
+              - key: local-kms-backing-keys
+                path: local-kms-backing-keys

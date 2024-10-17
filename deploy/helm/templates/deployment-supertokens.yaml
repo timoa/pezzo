@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pezzo.fullname" . }}-supertokens
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: supertokens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pezzo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: supertokens
+  template:
+    metadata:
+      labels:
+        {{- include "pezzo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: supertokens
+    spec:
+      containers:
+        - name: supertokens
+          image: supertokens/supertokens-postgresql:5.0
+          ports:
+            - name: http
+              containerPort: 3567
+          env:
+            - name: POSTGRES_CONNECTION_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pezzo.fullname" . }}-secrets
+                  key: supertokens-connection-uri

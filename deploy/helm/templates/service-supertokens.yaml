@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pezzo.fullname" . }}-supertokens
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: supertokens
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.supertokens.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "pezzo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: supertokens

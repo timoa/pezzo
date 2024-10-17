@@ -1,0 +1,17 @@
+{{- if and .Values.clickhouse.enabled .Values.clickhouse.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "pezzo.fullname" . }}-clickhouse
+  labels:
+    {{- include "pezzo.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.clickhouse.persistence.storageClass }}
+  storageClassName: {{ .Values.clickhouse.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.clickhouse.persistence.size }}
+{{- end }}
